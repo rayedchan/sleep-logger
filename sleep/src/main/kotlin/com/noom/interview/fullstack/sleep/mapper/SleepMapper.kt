@@ -18,11 +18,10 @@ fun CreateSleepLogRequest.toEntity(userId: UUID): SleepLogEntity {
 fun SleepLogEntity.toDto(): SleepLogDto {
     return SleepLogDto(
         id = this.id!!,
-        userId = this.userId,
         logDate = this.logDate,
         bedTime = this.bedTime,
         wakeTime = this.wakeTime,
         mood = this.mood,
-        totalDuration = this.totalDuration!!
+        totalDurationSeconds = this.totalDurationSeconds!!
     )
 }

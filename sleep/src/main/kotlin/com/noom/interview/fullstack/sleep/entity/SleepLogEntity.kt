@@ -11,5 +11,5 @@ data class SleepLogEntity(
     val bedTime: OffsetDateTime,
     val wakeTime: OffsetDateTime,
     val mood: SleepQuality,
-    val totalDuration: String? = null
+    val totalDurationSeconds: Long? = null
 )

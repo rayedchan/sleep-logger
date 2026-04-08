@@ -24,8 +24,8 @@ class SleepController(private val sleepService: SleepService) {
         return sleepService.createSleepLog(userId, request)
     }
 
-    @GetMapping("/last-night")
-    fun getLastNight(@RequestHeader("X-User-Id") userId: UUID): SleepLogDto? {
+    @GetMapping("/latest")
+    fun getLatestSleepLog(@RequestHeader("X-User-Id") userId: UUID): SleepLogDto? {
         return sleepService.getMostRecentSleepLog(userId);
     }
 
