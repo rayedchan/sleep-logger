@@ -11,7 +11,6 @@ import com.noom.interview.fullstack.sleep.repository.SleepRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
-import java.time.Duration
 import java.time.OffsetTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -35,15 +34,11 @@ class SleepService(private val sleepRepository: SleepRepository) {
         val avgSeconds = (data["avg_seconds"] as? Number)?.toDouble()
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No sleep data found for the last 30 days")
 
-        val duration = Duration.ofSeconds(avgSeconds.toLong())
-
-        println(data["avg_start"].toString())
-
         // Map the raw database results into our clean Response DTO
         return SleepAnalyticsResponse(
             startDate = (data["range_start"] as java.sql.Date).toLocalDate(),
             endDate = (data["range_end"] as java.sql.Date).toLocalDate(),
-            avgTotalTime = formatDuration(duration),
+            avgTotalTimeSeconds = avgSeconds,
             avgBedTime = OffsetTime.parse(data["avg_start"].toString(), DateTimeFormatter.ISO_OFFSET_TIME),
             avgWakeTime = OffsetTime.parse(data["avg_end"].toString(), DateTimeFormatter.ISO_OFFSET_TIME),
             moodFrequencies = mapOf(
@@ -54,9 +49,4 @@ class SleepService(private val sleepRepository: SleepRepository) {
         )
     }
 
-    private fun formatDuration(duration: Duration): String {
-        val hours = duration.toHours()
-        val minutes = duration.toMinutesPart()
-        return "${hours}h ${minutes}m"
-    }
 }

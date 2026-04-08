@@ -7,7 +7,7 @@ import java.time.OffsetTime
 data class SleepAnalyticsResponse(
     val startDate: LocalDate,
     val endDate: LocalDate,
-    val avgTotalTime: String,
+    val avgTotalTimeSeconds: Double,
     val avgBedTime: OffsetTime,
     val avgWakeTime: OffsetTime,
     val moodFrequencies: Map<SleepQuality, Int>
