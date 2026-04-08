@@ -1,0 +1,79 @@
+# ========================
+# Build / Gradle
+# ========================
+.gradle/
+build/
+out/
+
+# Gradle wrapper (KEEP jar, ignore others if desired)
+!gradle/wrapper/gradle-wrapper.jar
+
+# ========================
+# IntelliJ / IDE
+# ========================
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# ========================
+# OS Files
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# Logs
+# ========================
+*.log
+
+# ========================
+# Environment / Secrets
+# ========================
+.env
+.env.*
+*.env
+
+# Spring Boot config overrides
+application-local.yml
+application-local.yaml
+application-local.properties
+
+# ========================
+# Kotlin / Java
+# ========================
+*.class
+
+# ========================
+# Generated files
+# ========================
+generated/
+bin/
+
+# ========================
+# Test outputs
+# ========================
+test-output/
+
+# ========================
+# Docker
+# ========================
+docker-compose.override.yml
+
+# ========================
+# Misc
+# ========================
+*.swp
+*.swo
+*~
+
+db/
