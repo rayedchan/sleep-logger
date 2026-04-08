@@ -12,7 +12,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
 import java.time.Duration
-import java.time.LocalTime
+import java.time.OffsetTime
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 @Service
@@ -36,13 +37,15 @@ class SleepService(private val sleepRepository: SleepRepository) {
 
         val duration = Duration.ofSeconds(avgSeconds.toLong())
 
+        println(data["avg_start"].toString())
+
         // Map the raw database results into our clean Response DTO
         return SleepAnalyticsResponse(
             startDate = (data["range_start"] as java.sql.Date).toLocalDate(),
             endDate = (data["range_end"] as java.sql.Date).toLocalDate(),
             avgTotalTime = formatDuration(duration),
-            avgBedTime = LocalTime.parse(data["avg_start"].toString()),
-            avgWakeTime = LocalTime.parse(data["avg_end"].toString()),
+            avgBedTime = OffsetTime.parse(data["avg_start"].toString(), DateTimeFormatter.ISO_OFFSET_TIME),
+            avgWakeTime = OffsetTime.parse(data["avg_end"].toString(), DateTimeFormatter.ISO_OFFSET_TIME),
             moodFrequencies = mapOf(
                 SleepQuality.GOOD to (data["count_good"] as Long).toInt(),
                 SleepQuality.OK to (data["count_ok"] as Long).toInt(),

@@ -41,48 +41,37 @@ class SleepRepository(private val jdbcTemplate: JdbcTemplate) {
 
     fun getAggregatedStats(userId: UUID, days: Int): Map<String, Any?> {
         val sql = """
-            SELECT 
-                EXTRACT(EPOCH FROM AVG(total_duration)) AS avg_seconds,
-                
-                TO_CHAR(
-                    (
-                        AVG(
-                            EXTRACT(EPOCH FROM (
-                                CASE 
-                                    WHEN bed_time::time < TIME '12:00'
-                                        THEN bed_time + INTERVAL '24 hours'
-                                    ELSE bed_time
-                                END
-                            ))
-                        ) * INTERVAL '1 second'
-                    )::time,
-                    'HH24:MI:SS'
-                ) AS avg_start,
-                
-                TO_CHAR(
-                    (
-                        AVG(
-                            EXTRACT(EPOCH FROM (
-                                CASE 
-                                    WHEN wake_time::time < TIME '12:00'
-                                        THEN wake_time + INTERVAL '24 hours'
-                                    ELSE wake_time
-                                END
-                            ))
-                        ) * INTERVAL '1 second'
-                    )::time,
-                    'HH24:MI:SS'
-                ) AS avg_end,
-                
-                COUNT(*) FILTER (WHERE mood = 'GOOD') AS count_good,
-                COUNT(*) FILTER (WHERE mood = 'OK')   AS count_ok,
-                COUNT(*) FILTER (WHERE mood = 'BAD')  AS count_bad,
-                
-                MIN(log_date) AS range_start,
-                MAX(log_date) AS range_end
-            FROM sleep_logs 
-            WHERE user_id = ?
-              AND log_date > CURRENT_DATE - CAST(? || ' days' AS INTERVAL);
+SELECT 
+    -- 1. Average Duration (Internal interval calculation)
+    EXTRACT(EPOCH FROM AVG(total_duration)) as avg_seconds,
+
+    -- 2. Average Bed Time (Circular-aware & UTC-locked)
+    (((AVG(
+        CASE 
+            WHEN EXTRACT(HOUR FROM (bed_time AT TIME ZONE 'UTC')) < 12 
+            THEN EXTRACT(EPOCH FROM (bed_time AT TIME ZONE 'UTC')::time) + 86400
+            ELSE EXTRACT(EPOCH FROM (bed_time AT TIME ZONE 'UTC')::time)
+        END
+    )::bigint % 86400) * INTERVAL '1 second')::time::text || 'Z') as avg_start,
+
+    -- 3. Average Wake Time (Circular-aware & UTC-locked)
+    (((AVG(
+        CASE 
+            WHEN EXTRACT(HOUR FROM (wake_time AT TIME ZONE 'UTC')) < 12 
+            THEN EXTRACT(EPOCH FROM (wake_time AT TIME ZONE 'UTC')::time) + 86400
+            ELSE EXTRACT(EPOCH FROM (wake_time AT TIME ZONE 'UTC')::time)
+        END
+    )::bigint % 86400) * INTERVAL '1 second')::time::text || 'Z') as avg_end,
+
+    -- 4. Frequencies and Range
+    COUNT(*) FILTER (WHERE mood = 'GOOD') as count_good,
+    COUNT(*) FILTER (WHERE mood = 'OK') as count_ok,
+    COUNT(*) FILTER (WHERE mood = 'BAD') as count_bad,
+    MIN(log_date) as range_start,
+    MAX(log_date) as range_end
+FROM sleep_logs 
+WHERE user_id = ? 
+  AND log_date > CURRENT_DATE - CAST(? || ' days' AS INTERVAL);
         """
         return jdbcTemplate.queryForMap(sql, userId, days)
     }
