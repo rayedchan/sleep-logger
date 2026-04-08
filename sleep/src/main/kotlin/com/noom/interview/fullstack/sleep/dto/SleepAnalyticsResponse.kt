@@ -5,10 +5,10 @@ import java.time.LocalDate
 import java.time.OffsetTime
 
 data class SleepAnalyticsResponse(
-    val startDate: LocalDate,
-    val endDate: LocalDate,
-    val avgTotalTimeSeconds: Double,
-    val avgBedTime: OffsetTime,
-    val avgWakeTime: OffsetTime,
+    val startDate: LocalDate?,
+    val endDate: LocalDate?,
+    val avgTotalTimeSeconds: Long?,
+    val avgBedTime: OffsetTime?,
+    val avgWakeTime: OffsetTime?,
     val moodFrequencies: Map<SleepQuality, Int>
 )

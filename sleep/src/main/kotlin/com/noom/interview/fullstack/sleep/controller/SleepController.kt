@@ -5,6 +5,7 @@ import com.noom.interview.fullstack.sleep.dto.SleepAnalyticsResponse
 import com.noom.interview.fullstack.sleep.dto.SleepLogDto
 import com.noom.interview.fullstack.sleep.service.SleepService
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -25,8 +26,14 @@ class SleepController(private val sleepService: SleepService) {
     }
 
     @GetMapping("/latest")
-    fun getLatestSleepLog(@RequestHeader("X-User-Id") userId: UUID): SleepLogDto? {
-        return sleepService.getMostRecentSleepLog(userId);
+    fun getLatestSleepLog(@RequestHeader("X-User-Id", required = true) userId: UUID): ResponseEntity<SleepLogDto> {
+        val latestSleepLog = sleepService.getMostRecentSleepLog(userId)
+
+        return if (latestSleepLog != null) {
+            ResponseEntity.ok(latestSleepLog)
+        } else {
+            ResponseEntity.noContent().build()
+        }
     }
 
     @GetMapping("/stats")

@@ -4,49 +4,38 @@ import com.noom.interview.fullstack.sleep.dto.CreateSleepLogRequest
 import com.noom.interview.fullstack.sleep.dto.SleepAnalyticsResponse
 import com.noom.interview.fullstack.sleep.dto.SleepLogDto
 import com.noom.interview.fullstack.sleep.entity.SleepLogEntity
-import com.noom.interview.fullstack.sleep.entity.SleepQuality
 import com.noom.interview.fullstack.sleep.mapper.toDto
 import com.noom.interview.fullstack.sleep.mapper.toEntity
 import com.noom.interview.fullstack.sleep.repository.SleepRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
-import java.time.OffsetTime
-import java.time.format.DateTimeFormatter
+import java.time.Duration
 import java.util.UUID
 
 @Service
 class SleepService(private val sleepRepository: SleepRepository) {
     fun createSleepLog(userId: UUID, sleepLogDto: CreateSleepLogRequest): SleepLogDto {
+        // validate: bed time must before wake time
+        if(sleepLogDto.bedTime.isAfter(sleepLogDto.wakeTime)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Bed time cannot be after wake time")
+        }
+
+        // validate: bed time and wake time difference is within 24 hour
+        val duration = Duration.between(sleepLogDto.bedTime, sleepLogDto.wakeTime)
+        if (duration.toHours() >= 24) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "A single sleep log cannot exceed 24 hours")
+        }
+
         val entity: SleepLogEntity = sleepLogDto.toEntity(userId)
-        val newlyCreatedEntity: SleepLogEntity = sleepRepository.saveSleepLog(userId, entity)
-        return newlyCreatedEntity.toDto()
+        return sleepRepository.saveSleepLog(userId, entity).toDto()
     }
 
     fun getMostRecentSleepLog(userId: UUID): SleepLogDto? {
-       return sleepRepository.findMostRecentSleepLog(userId)?.toDto()
+        return sleepRepository.findMostRecentSleepLog(userId)?.toDto()
     }
 
     fun getThirtyDayStats(userId: UUID): SleepAnalyticsResponse {
-        val data = sleepRepository.getAggregatedStats(userId, 30)
-
-        // If the database returns null for averages, the user has no logs in this range
-        val avgSeconds = (data["avg_seconds"] as? Number)?.toDouble()
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No sleep data found for the last 30 days")
-
-        // Map the raw database results into our clean Response DTO
-        return SleepAnalyticsResponse(
-            startDate = (data["range_start"] as java.sql.Date).toLocalDate(),
-            endDate = (data["range_end"] as java.sql.Date).toLocalDate(),
-            avgTotalTimeSeconds = avgSeconds,
-            avgBedTime = OffsetTime.parse(data["avg_start"].toString(), DateTimeFormatter.ISO_OFFSET_TIME),
-            avgWakeTime = OffsetTime.parse(data["avg_end"].toString(), DateTimeFormatter.ISO_OFFSET_TIME),
-            moodFrequencies = mapOf(
-                SleepQuality.GOOD to (data["count_good"] as Long).toInt(),
-                SleepQuality.OK to (data["count_ok"] as Long).toInt(),
-                SleepQuality.BAD to (data["count_bad"] as Long).toInt()
-            )
-        )
+        return sleepRepository.getAggregatedStats(userId, 30)
     }
-
 }
