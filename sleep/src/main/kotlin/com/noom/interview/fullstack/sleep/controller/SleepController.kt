@@ -1,6 +1,7 @@
 package com.noom.interview.fullstack.sleep.controller
 
 import com.noom.interview.fullstack.sleep.dto.CreateSleepLogRequest
+import com.noom.interview.fullstack.sleep.dto.SleepAnalyticsResponse
 import com.noom.interview.fullstack.sleep.dto.SleepLogDto
 import com.noom.interview.fullstack.sleep.service.SleepService
 import org.springframework.http.HttpStatus
@@ -28,7 +29,8 @@ class SleepController(private val sleepService: SleepService) {
         return sleepService.getMostRecentSleepLog(userId);
     }
 
-
-
-
+    @GetMapping("/stats")
+    fun getAverages(@RequestHeader("X-User-Id") userId: UUID): SleepAnalyticsResponse {
+        return sleepService.getThirtyDayStats(userId)
+    }
 }

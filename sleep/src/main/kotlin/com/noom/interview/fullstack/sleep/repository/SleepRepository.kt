@@ -38,4 +38,21 @@ class SleepRepository(private val jdbcTemplate: JdbcTemplate) {
 
         return jdbcTemplate.query(sql, rowMapper, userId).firstOrNull()
     }
+
+    fun getAggregatedStats(userId: UUID, days: Int): Map<String, Any?> {
+        val sql = """
+            SELECT 
+                EXTRACT(EPOCH FROM AVG(total_duration)) as avg_seconds,
+                AVG(bed_time::time)::text as avg_start,
+                AVG(wake_time::time)::text as avg_end,
+                COUNT(*) FILTER (WHERE mood = 'GOOD') as count_good,
+                COUNT(*) FILTER (WHERE mood = 'OK') as count_ok,
+                COUNT(*) FILTER (WHERE mood = 'BAD') as count_bad,
+                MIN(log_date) as range_start,
+                MAX(log_date) as range_end
+            FROM sleep_logs 
+            WHERE user_id = ? AND log_date > CURRENT_DATE - CAST(? || ' days' AS INTERVAL)
+        """
+        return jdbcTemplate.queryForMap(sql, userId, days)
+    }
 }
