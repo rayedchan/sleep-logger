@@ -16,6 +16,7 @@ import java.util.UUID
 @Service
 class SleepService(private val sleepRepository: SleepRepository) {
     fun createSleepLog(userId: UUID, sleepLogDto: CreateSleepLogRequest): SleepLogDto {
+
         // validate: bed time must before wake time
         if(sleepLogDto.bedTime.isAfter(sleepLogDto.wakeTime)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Bed time cannot be after wake time")
