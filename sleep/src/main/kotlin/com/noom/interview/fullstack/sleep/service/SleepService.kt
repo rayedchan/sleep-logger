@@ -13,7 +13,11 @@ import java.util.UUID
 class SleepService(private val sleepRepository: SleepRepository) {
     fun createSleepLog(userId: UUID, sleepLogDto: CreateSleepLogRequest): SleepLogDto {
         val entity: SleepLogEntity = sleepLogDto.toEntity(userId)
-        val newlyCreatedEntity: SleepLogEntity =  sleepRepository.saveSleepLog(userId, entity)
+        val newlyCreatedEntity: SleepLogEntity = sleepRepository.saveSleepLog(userId, entity)
         return newlyCreatedEntity.toDto()
+    }
+
+    fun getMostRecentSleepLog(userId: UUID): SleepLogDto? {
+       return sleepRepository.findMostRecentSleepLog(userId)?.toDto()
     }
 }

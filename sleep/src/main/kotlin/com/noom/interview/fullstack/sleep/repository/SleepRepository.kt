@@ -29,4 +29,13 @@ class SleepRepository(private val jdbcTemplate: JdbcTemplate) {
 
         return jdbcTemplate.queryForObject(sql, rowMapper, userId, log.logDate, log.bedTime, log.wakeTime, log.mood.name)!!
     }
+
+    fun findMostRecentSleepLog(userId: UUID): SleepLogEntity? {
+        val sql = """
+            SELECT * FROM sleep_logs WHERE user_id = ? 
+            ORDER BY log_date DESC LIMIT 1
+        """
+
+        return jdbcTemplate.query(sql, rowMapper, userId).firstOrNull()
+    }
 }
