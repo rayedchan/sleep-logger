@@ -76,4 +76,5 @@ docker-compose.override.yml
 *.swo
 *~
 
-db/
+# Ignore the 'db' folder at the root of the project only
+/db/

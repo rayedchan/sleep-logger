@@ -1,0 +1,1 @@
+ALTER TABLE sleep_logs ADD CONSTRAINT unique_user_date UNIQUE (user_id, log_date);
