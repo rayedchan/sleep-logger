@@ -1,0 +1,517 @@
+{
+  "info": {
+    "_postman_id": "04fb7107-2739-4cdb-b01f-8ecd18f9e8bd",
+    "name": "Sleep Logger",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "5720780"
+  },
+  "item": [
+    {
+      "name": "Log Sleep",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"logDate\": \"2026-04-11\",\n    \"bedTime\": \"2026-04-08T02:00:00Z\",\n    \"wakeTime\": \"2026-04-08T10:00:00Z\",\n    \"mood\": \"GOOD\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/v1/sleep",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "v1",
+            "sleep"
+          ]
+        },
+        "description": "Creates a new sleep log entry for the user.\n\nRequired header:\n\n- `X-User-Id` : UUID format (e.g. c9061dc2-7e56-450e-99dd-a1b06280eb8b)\n    \n\nRequest body fields:\n\n- `logDate`: Sleep log date. Format YYYY-MM-DD (e.g., \"2026-04-12\" )\n    \n- `bedTime`: Go to bed time. Format **`YYYY-MM-DDTHH:mm:ssZ`** (e.g., \"2026-04-09T18:00:00Z\")\n    \n- `wakeTime`: Wake up time. Format **`YYYY-MM-DDTHH:mm:ssZ`** \"2026-04-10T07:00:00Z\"\n    \n- `mood`: \"GOOD\", \"OK\", \"BAD\"\n    \n\nReponse fields:\n\n- `id`: Id of the sleep log\n    \n- `logDate`\n    \n- `bedTime`\n    \n- `wakeTime`\n    \n- `mood`\n    \n- `totalDurationSeconds`: Total sleep duration in seconds"
+      },
+      "response": [
+        {
+          "name": "201 Created - Sleep logged successfully",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "901e31b7-c5b0-4fef-a914-472c2cfbb4fd"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"logDate\":\"2026-04-11\",\"bedTime\":\"2026-04-09T18:00:00Z\",\"wakeTime\":\"2026-04-10T07:00:00Z\",\"mood\":\"GOOD\"}",
+              "options": {
+                "raw": "json"
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/v1/sleep",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "v1",
+                "sleep"
+              ]
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "X-User-Id",
+              "value": "901e31b7-c5b0-4fef-a914-472c2cfbb4fd",
+              "description": "",
+              "enabled": true
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "description": "",
+              "enabled": true
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"id\": 3,\n    \"logDate\": \"2026-04-12\",\n    \"bedTime\": \"2026-04-09T18:00:00Z\",\n    \"wakeTime\": \"2026-04-10T07:00:00Z\",\n    \"mood\": \"GOOD\",\n    \"totalDurationSeconds\": 46800\n}"
+        },
+        {
+          "name": "409 Conflict - Sleep already logged",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "901e31b7-c5b0-4fef-a914-472c2cfbb4fd"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"logDate\":\"2026-04-11\",\"bedTime\":\"2026-04-09T18:00:00Z\",\"wakeTime\":\"2026-04-10T07:00:00Z\",\"mood\":\"GOOD\"}",
+              "options": {
+                "raw": "json"
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/v1/sleep",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "v1",
+                "sleep"
+              ]
+            }
+          },
+          "status": "Conflict",
+          "code": 409,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "X-User-Id",
+              "value": "901e31b7-c5b0-4fef-a914-472c2cfbb4fd",
+              "description": "",
+              "enabled": true
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "description": "",
+              "enabled": true
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"You have already logged sleep for this date. Only one log per day is allowed.\",\n    \"status\": 409\n}"
+        },
+        {
+          "name": "400 Bad Request - 24 Hour Constraint",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "901e31b7-c5b0-4fef-a914-472c2cfbb4fd",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"logDate\": \"2026-01-12\",\n    \"bedTime\": \"2026-01-10T18:00:00Z\",\n    \"wakeTime\": \"2026-01-12T07:00:00Z\",\n    \"mood\": \"GOOD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/v1/sleep",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "v1",
+                "sleep"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "description": "",
+              "type": "text"
+            }
+          ],
+          "cookie": [
+            {
+              "expires": "Invalid Date",
+              "domain": "",
+              "path": ""
+            }
+          ],
+          "body": "{\n    \"timestamp\": \"2026-04-08T23:51:27.664789635\",\n    \"status\": 400,\n    \"error\": \"Bad Request\",\n    \"message\": \"A single sleep log cannot exceed 24 hours\",\n    \"path\": \"/api/v1/sleep\"\n}"
+        },
+        {
+          "name": "400 Bad Request - Bed Time > Wake Time",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "901e31b7-c5b0-4fef-a914-472c2cfbb4fd",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"logDate\": \"2026-01-12\",\n    \"bedTime\": \"2026-01-12T18:00:00Z\",\n    \"wakeTime\": \"2026-01-12T07:00:00Z\",\n    \"mood\": \"GOOD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/v1/sleep",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "v1",
+                "sleep"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "description": "",
+              "type": "text"
+            }
+          ],
+          "cookie": [
+            {
+              "expires": "Invalid Date",
+              "domain": "",
+              "path": ""
+            }
+          ],
+          "body": "{\n    \"timestamp\": \"2026-04-08T23:54:20.283908673\",\n    \"status\": 400,\n    \"error\": \"Bad Request\",\n    \"message\": \"Bed time cannot be after wake time\",\n    \"path\": \"/api/v1/sleep\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Fetch Most Recent Sleep Log",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/sleep/latest",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "v1",
+            "sleep",
+            "latest"
+          ]
+        },
+        "description": "Fetches the most recent sleep log entry for the user.\n\nRequired header:\n\n- `X-User-Id` : UUID format (e.g. c9061dc2-7e56-450e-99dd-a1b06280eb8b)\n    \n\nReponse fields:\n\n- `id`: Id of the sleep log\n    \n- `logDate`: Sleep log date. Format YYYY-MM-DD (e.g., \"2026-04-12\" )\n    \n- `bedTime`: Go to bed time. Format **`YYYY-MM-DDTHH:mm:ssZ`** (e.g., \"2026-04-09T18:00:00Z\")\n    \n- `wakeTime`: Wake up time. Format **`YYYY-MM-DDTHH:mm:ssZ`** \"2026-04-10T07:00:00Z\"\n    \n- `mood`: \"GOOD\", \"OK\", \"BAD\"\n    \n- `totalDurationSeconds`: Total sleep duration in seconds"
+      },
+      "response": [
+        {
+          "name": "200 Success - Single sleep log",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "901e31b7-c5b0-4fef-a914-472c2cfbb4fd",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/v1/sleep/latest",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "v1",
+                "sleep",
+                "latest"
+              ]
+            }
+          },
+          "_postman_previewlanguage": "",
+          "header": [],
+          "cookie": [
+            {
+              "expires": "Invalid Date",
+              "domain": "",
+              "path": ""
+            }
+          ],
+          "body": "{\n    \"id\": 3,\n    \"logDate\": \"2026-04-12\",\n    \"bedTime\": \"2026-04-09T18:00:00Z\",\n    \"wakeTime\": \"2026-04-10T07:00:00Z\",\n    \"mood\": \"GOOD\",\n    \"totalDurationSeconds\": 46800\n}"
+        },
+        {
+          "name": "204 Success - User has no data",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "901e31b7-c5b0-4fef-a914-472c2cfbb4f6",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/v1/sleep/latest",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "v1",
+                "sleep",
+                "latest"
+              ]
+            }
+          },
+          "status": "No Content",
+          "code": 204,
+          "_postman_previewlanguage": null,
+          "header": null,
+          "cookie": [],
+          "body": null
+        }
+      ]
+    },
+    {
+      "name": "Sleep Stats 30 day averages",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/v1/sleep/stats",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "v1",
+            "sleep",
+            "stats"
+          ]
+        },
+        "description": "Retrieves the sleep averages in last 30 days\n\nRequired header:\n\n- `X-User-Id`: The user identifier for which sleep stats are requested.\n    \n\nResponse fields:\n\n- `startDate` : Earliest date sleep log record within the 30 days calculations\n    \n- `endDate` : Latest date of sleep log record within the 30 days calculations\n    \n- `avgTotalTimeSeconds` : Average total time of sleep duration in seconds\n    \n- `avgBedTime` : Average bed time\n    \n- `avgWakeTime` : Average wake up time\n    \n- `moodFrequencies` : Total count of each mood"
+      },
+      "response": [
+        {
+          "name": "200 Success - Data exists",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "901e31b7-c5b0-4fef-a914-472c2cfbb4fd",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/v1/sleep/stats",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "v1",
+                "sleep",
+                "stats"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "description": "",
+              "type": "text"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"startDate\": \"2026-04-11\",\n    \"endDate\": \"2026-04-13\",\n    \"avgTotalTimeSeconds\": 46800,\n    \"avgBedTime\": \"18:00Z\",\n    \"avgWakeTime\": \"07:00Z\",\n    \"moodFrequencies\": {\n        \"GOOD\": 3,\n        \"OK\": 0,\n        \"BAD\": 0\n    }\n}"
+        },
+        {
+          "name": "200 Success - No data",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "901e31b7-c5b0-4fef-a914-472c2cfbb4fe",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/v1/sleep/stats",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "v1",
+                "sleep",
+                "stats"
+              ]
+            }
+          },
+          "code": 200,
+          "_postman_previewlanguage": "",
+          "header": [],
+          "cookie": [
+            {
+              "expires": "Invalid Date",
+              "domain": "",
+              "path": ""
+            }
+          ],
+          "body": "{\n    \"startDate\": null,\n    \"endDate\": null,\n    \"avgTotalTimeSeconds\": null,\n    \"avgBedTime\": null,\n    \"avgWakeTime\": null,\n    \"moodFrequencies\": {\n        \"GOOD\": 0,\n        \"OK\": 0,\n        \"BAD\": 0\n    }\n}"
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "userId",
+      "value": ""
+    }
+  ]
+}

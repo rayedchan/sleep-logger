@@ -1,6 +1,5 @@
 package com.noom.interview.fullstack.sleep.repository
 
-import com.noom.interview.fullstack.sleep.dto.CreateSleepLogRequest
 import com.noom.interview.fullstack.sleep.dto.SleepAnalyticsResponse
 import com.noom.interview.fullstack.sleep.entity.SleepLogEntity
 import com.noom.interview.fullstack.sleep.entity.SleepQuality
