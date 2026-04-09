@@ -41,4 +41,24 @@ tasks.named('bootBuildImage') {
 
 tasks.named('test') {
 	useJUnitPlatform()
+    filter {
+        excludeTestsMatching("*IT")
+    }
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+
+    // Use JUnit 5
+    useJUnitPlatform()
+
+    // Only run classes ending in IT
+    filter {
+        includeTestsMatching "*IT"
+    }
+
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
