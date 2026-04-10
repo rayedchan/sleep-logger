@@ -380,4 +380,57 @@ class SleepControllerIT(@Autowired val mockMvc: MockMvc, @Autowired val objectMa
             jsonPath("$.avgBedTime") { value("04:00Z") }
         }
     }
+
+    @Test
+    fun `test stats uses circular average for bed times 20 22 and 02 UTC`() {
+        val userId = UUID.randomUUID()
+        val today = LocalDate.now(ZoneOffset.UTC)
+
+        mockMvc.post("/api/v1/sleep") {
+            header("X-User-Id", userId)
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(
+                mapOf(
+                    "logDate" to today.minusDays(2).toString(),
+                    "bedTime" to today.minusDays(2).atTime(20, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "wakeTime" to today.minusDays(1).atTime(4, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "mood" to "GOOD"
+                )
+            )
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.post("/api/v1/sleep") {
+            header("X-User-Id", userId)
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(
+                mapOf(
+                    "logDate" to today.minusDays(1).toString(),
+                    "bedTime" to today.minusDays(1).atTime(22, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "wakeTime" to today.atTime(6, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "mood" to "GOOD"
+                )
+            )
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.post("/api/v1/sleep") {
+            header("X-User-Id", userId)
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(
+                mapOf(
+                    "logDate" to today.toString(),
+                    "bedTime" to today.atTime(2, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "wakeTime" to today.atTime(10, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "mood" to "GOOD"
+                )
+            )
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.get("/api/v1/sleep/stats") {
+            header("X-User-Id", userId)
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.avgBedTime") { value("22:35Z") }
+            jsonPath("$.moodFrequencies.GOOD") { value(3) }
+        }
+    }
 }
