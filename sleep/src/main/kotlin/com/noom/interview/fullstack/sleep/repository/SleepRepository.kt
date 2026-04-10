@@ -1,14 +1,12 @@
 package com.noom.interview.fullstack.sleep.repository
 
-import com.noom.interview.fullstack.sleep.dto.SleepAnalyticsResponse
+import com.noom.interview.fullstack.sleep.dto.SleepStatsRaw
 import com.noom.interview.fullstack.sleep.entity.SleepLogEntity
 import com.noom.interview.fullstack.sleep.entity.SleepQuality
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.stereotype.Repository
 import java.sql.ResultSet
-import java.time.OffsetTime
-import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 @Repository
@@ -25,21 +23,26 @@ class SleepRepository(private val jdbcTemplate: JdbcTemplate) {
     ) }
 
     private val statsRowMapper = RowMapper { rs: ResultSet, _ ->
-        SleepAnalyticsResponse(
+        val bedArray = rs.getArray("bed_times")?.array as? Array<*>
+        val wakeArray = rs.getArray("wake_times")?.array as? Array<*>
+
+        val bedTimes = bedArray
+            ?.mapNotNull { (it as? Number)?.toDouble() }
+            ?: emptyList()
+
+        val wakeTimes = wakeArray
+            ?.mapNotNull { (it as? Number)?.toDouble() }
+            ?: emptyList()
+
+        SleepStatsRaw(
+            avgSeconds = rs.getLong("avg_seconds").takeUnless { rs.wasNull() },
+            bedTimes = bedTimes,
+            wakeTimes = wakeTimes,
+            countGood = rs.getInt("count_good"),
+            countOk = rs.getInt("count_ok"),
+            countBad = rs.getInt("count_bad"),
             startDate = rs.getDate("range_start")?.toLocalDate(),
-            endDate = rs.getDate("range_end")?.toLocalDate(),
-            avgTotalTimeSeconds = rs.getLong("avg_seconds").takeUnless { rs.wasNull() },
-            avgBedTime = rs.getString("avg_start")?.let {
-                OffsetTime.parse(it, DateTimeFormatter.ISO_OFFSET_TIME)
-            },
-            avgWakeTime = rs.getString("avg_end")?.let {
-                OffsetTime.parse(it, DateTimeFormatter.ISO_OFFSET_TIME)
-            },
-            moodFrequencies = mapOf(
-                SleepQuality.GOOD to rs.getInt("count_good"),
-                SleepQuality.OK to rs.getInt("count_ok"),
-                SleepQuality.BAD to rs.getInt("count_bad")
-            )
+            endDate = rs.getDate("range_end")?.toLocalDate()
         )
     }
 
@@ -65,38 +68,28 @@ class SleepRepository(private val jdbcTemplate: JdbcTemplate) {
         return jdbcTemplate.query(sql, sleepLogRowMapper, userId).firstOrNull()
     }
 
-    fun getAggregatedStats(userId: UUID, days: Int): SleepAnalyticsResponse {
+    fun getDetermininisticAggregatedStats(userId: UUID, days: Int): SleepStatsRaw {
         val sql = """
             SELECT 
                 -- 1. Average Duration
                 EXTRACT(EPOCH FROM AVG(total_duration))::bigint AS avg_seconds,
             
-                -- 2. Average Bed Time (true circular mean)
-                (((
-                    (atan2(
-                        AVG(sin(EXTRACT(EPOCH FROM (bed_time AT TIME ZONE 'UTC')::time) * 2 * pi() / 86400)),
-                        AVG(cos(EXTRACT(EPOCH FROM (bed_time AT TIME ZONE 'UTC')::time) * 2 * pi() / 86400))
-                    ) * 86400 / (2 * pi()))::bigint % 86400 + 86400) % 86400
-                ) * INTERVAL '1 second')::time::text || 'Z' AS avg_start,
+                -- 2. Raw time arrays 
+                ARRAY_AGG(EXTRACT(EPOCH FROM (bed_time AT TIME ZONE 'UTC')::time))  AS bed_times,
+                ARRAY_AGG(EXTRACT(EPOCH FROM (wake_time AT TIME ZONE 'UTC')::time)) AS wake_times,
             
-                -- 3. Average Wake Time (true circular mean)
-                (((
-                    (atan2(
-                        AVG(sin(EXTRACT(EPOCH FROM (wake_time AT TIME ZONE 'UTC')::time) * 2 * pi() / 86400)),
-                        AVG(cos(EXTRACT(EPOCH FROM (wake_time AT TIME ZONE 'UTC')::time) * 2 * pi() / 86400))
-                    ) * 86400 / (2 * pi()))::bigint % 86400 + 86400) % 86400
-                ) * INTERVAL '1 second')::time::text || 'Z' AS avg_end,
-            
-                -- 4. Frequencies and range (unchanged)
+                -- 3. Frequencies
                 COUNT(*) FILTER (WHERE mood = 'GOOD') AS count_good,
                 COUNT(*) FILTER (WHERE mood = 'OK')   AS count_ok,
                 COUNT(*) FILTER (WHERE mood = 'BAD')  AS count_bad,
+            
+                -- 4. Date range
                 MIN(log_date) AS range_start,
                 MAX(log_date) AS range_end
             
             FROM sleep_logs
             WHERE user_id = ?
-              AND log_date > CURRENT_DATE - (? * INTERVAL '1 day');
+              AND log_date >= CURRENT_DATE - (? * INTERVAL '1 day');
         """
 
         return jdbcTemplate.queryForObject(sql, statsRowMapper,userId, days)!!

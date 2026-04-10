@@ -341,4 +341,43 @@ class SleepControllerIT(@Autowired val mockMvc: MockMvc, @Autowired val objectMa
             jsonPath("$.endDate") { value(today.toString()) }
         }
     }
+
+    @Test
+    fun `test stats when bed times are exactly 12 hours apart`() {
+        val userId = UUID.randomUUID()
+        val today = LocalDate.now(ZoneOffset.UTC)
+
+        mockMvc.post("/api/v1/sleep") {
+            header("X-User-Id", userId)
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(
+                mapOf(
+                    "logDate"  to today.minusDays(1).toString(),
+                    "bedTime"  to today.minusDays(1).atTime(22, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "wakeTime" to today.atTime(6, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "mood"     to "OK"
+                )
+            )
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.post("/api/v1/sleep") {
+            header("X-User-Id", userId)
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(
+                mapOf(
+                    "logDate" to today.toString(),
+                    "bedTime" to today.atTime(10, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "wakeTime" to today.atTime(16, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "mood" to "OK"
+                )
+            )
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.get("/api/v1/sleep/stats") {
+            header("X-User-Id", userId)
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.avgBedTime") { value("04:00Z") }
+        }
+    }
 }

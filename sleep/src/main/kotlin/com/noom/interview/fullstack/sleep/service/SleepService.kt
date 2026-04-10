@@ -3,9 +3,11 @@ package com.noom.interview.fullstack.sleep.service
 import com.noom.interview.fullstack.sleep.dto.CreateSleepLogRequest
 import com.noom.interview.fullstack.sleep.dto.SleepAnalyticsResponse
 import com.noom.interview.fullstack.sleep.dto.SleepLogDto
+import com.noom.interview.fullstack.sleep.dto.SleepStatsRaw
 import com.noom.interview.fullstack.sleep.entity.SleepLogEntity
 import com.noom.interview.fullstack.sleep.mapper.toDto
 import com.noom.interview.fullstack.sleep.mapper.toEntity
+import com.noom.interview.fullstack.sleep.mapper.toResponse
 import com.noom.interview.fullstack.sleep.repository.SleepRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -18,7 +20,7 @@ class SleepService(private val sleepRepository: SleepRepository) {
     fun createSleepLog(userId: UUID, sleepLogDto: CreateSleepLogRequest): SleepLogDto {
 
         // validate: bed time must before wake time
-        if(sleepLogDto.bedTime.isAfter(sleepLogDto.wakeTime)) {
+        if (sleepLogDto.bedTime.isAfter(sleepLogDto.wakeTime)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Bed time cannot be after wake time")
         }
 
@@ -37,6 +39,10 @@ class SleepService(private val sleepRepository: SleepRepository) {
     }
 
     fun getThirtyDayStats(userId: UUID): SleepAnalyticsResponse {
-        return sleepRepository.getAggregatedStats(userId, 30)
+        val rawStats: SleepStatsRaw = sleepRepository.getDetermininisticAggregatedStats(userId, 30)
+        return rawStats.toResponse()
     }
 }
+
+
+
