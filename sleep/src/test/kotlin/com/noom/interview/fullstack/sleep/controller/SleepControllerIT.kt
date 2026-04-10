@@ -188,4 +188,56 @@ class SleepControllerIT(@Autowired val mockMvc: MockMvc, @Autowired val objectMa
             }
         }
     }
+
+    @Test
+    fun `get stats circular average handles bed times straddling midnight`() {
+        val userId = UUID.randomUUID()
+        val today = LocalDate.now(ZoneOffset.UTC)
+
+        // Log 1: bed at 23:30, wake at 07:00
+        val log1 = mapOf(
+            "logDate" to today.minusDays(1).toString(),
+            "bedTime" to today.minusDays(1).atTime(23, 30).atOffset(ZoneOffset.UTC).toString(),
+            "wakeTime" to today.atTime(7, 0).atOffset(ZoneOffset.UTC).toString(),
+            "mood" to "GOOD"
+        )
+
+        // Log 2: bed at 00:30, wake at 07:00
+        // Naive arithmetic mean of 23:30 and 00:30 = 12:00 (wrong)
+        // Circular mean = 00:00 (correct)
+        val log2 = mapOf(
+            "logDate" to today.toString(),
+            "bedTime" to today.atTime(0, 30).atOffset(ZoneOffset.UTC).toString(),
+            "wakeTime" to today.atTime(7, 0).atOffset(ZoneOffset.UTC).toString(),
+            "mood" to "OK"
+        )
+
+        listOf(log1, log2).forEach { body ->
+            mockMvc.post("/api/v1/sleep") {
+                header("X-User-Id", userId)
+                contentType = MediaType.APPLICATION_JSON
+                content = objectMapper.writeValueAsString(body)
+            }.andExpect { status { isCreated() } }
+        }
+
+        mockMvc.get("/api/v1/sleep/stats") {
+            header("X-User-Id", userId)
+        }.andExpect {
+            status { isOk() }
+            content {
+                // Circular mean of 23:30 and 00:30 = 00:00, not 12:00
+                jsonPath("$.avgBedTime") { value(org.hamcrest.Matchers.containsString("00:00")) }
+
+                // Both wake times identical — should be exact
+                jsonPath("$.avgWakeTime") { value(org.hamcrest.Matchers.containsString("07:00")) }
+
+                // Average of 7.5h (27000s) and 6.5h (23400s) = 7h (25200s)
+                jsonPath("$.avgTotalTimeSeconds") { value(25200) }
+
+                jsonPath("$.moodFrequencies.GOOD") { value(1) }
+                jsonPath("$.moodFrequencies.OK") { value(1) }
+                jsonPath("$.moodFrequencies.BAD") { value(0) }
+            }
+        }
+    }
 }

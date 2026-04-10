@@ -68,36 +68,35 @@ class SleepRepository(private val jdbcTemplate: JdbcTemplate) {
     fun getAggregatedStats(userId: UUID, days: Int): SleepAnalyticsResponse {
         val sql = """
             SELECT 
-                -- 1. Average Duration (Internal interval calculation)
-                EXTRACT(EPOCH FROM AVG(total_duration))::bigint as avg_seconds,
+                -- 1. Average Duration
+                EXTRACT(EPOCH FROM AVG(total_duration))::bigint AS avg_seconds,
             
-                -- 2. Average Bed Time (Circular-aware & UTC-locked)
-                (((AVG(
-                    CASE 
-                        WHEN EXTRACT(HOUR FROM (bed_time AT TIME ZONE 'UTC')) < 12 
-                        THEN EXTRACT(EPOCH FROM (bed_time AT TIME ZONE 'UTC')::time) + 86400
-                        ELSE EXTRACT(EPOCH FROM (bed_time AT TIME ZONE 'UTC')::time)
-                    END
-                )::bigint % 86400) * INTERVAL '1 second')::time::text || 'Z') as avg_start,
+                -- 2. Average Bed Time (true circular mean)
+                (((
+                    (atan2(
+                        AVG(sin(EXTRACT(EPOCH FROM (bed_time AT TIME ZONE 'UTC')::time) * 2 * pi() / 86400)),
+                        AVG(cos(EXTRACT(EPOCH FROM (bed_time AT TIME ZONE 'UTC')::time) * 2 * pi() / 86400))
+                    ) * 86400 / (2 * pi()))::bigint % 86400 + 86400) % 86400
+                ) * INTERVAL '1 second')::time::text || 'Z' AS avg_start,
             
-                -- 3. Average Wake Time (Circular-aware & UTC-locked)
-                (((AVG(
-                    CASE 
-                        WHEN EXTRACT(HOUR FROM (wake_time AT TIME ZONE 'UTC')) < 12 
-                        THEN EXTRACT(EPOCH FROM (wake_time AT TIME ZONE 'UTC')::time) + 86400
-                        ELSE EXTRACT(EPOCH FROM (wake_time AT TIME ZONE 'UTC')::time)
-                    END
-                )::bigint % 86400) * INTERVAL '1 second')::time::text || 'Z') as avg_end,
+                -- 3. Average Wake Time (true circular mean)
+                (((
+                    (atan2(
+                        AVG(sin(EXTRACT(EPOCH FROM (wake_time AT TIME ZONE 'UTC')::time) * 2 * pi() / 86400)),
+                        AVG(cos(EXTRACT(EPOCH FROM (wake_time AT TIME ZONE 'UTC')::time) * 2 * pi() / 86400))
+                    ) * 86400 / (2 * pi()))::bigint % 86400 + 86400) % 86400
+                ) * INTERVAL '1 second')::time::text || 'Z' AS avg_end,
             
-                -- 4. Frequencies and Range
-                COUNT(*) FILTER (WHERE mood = 'GOOD') as count_good,
-                COUNT(*) FILTER (WHERE mood = 'OK') as count_ok,
-                COUNT(*) FILTER (WHERE mood = 'BAD') as count_bad,
-                MIN(log_date) as range_start,
-                MAX(log_date) as range_end
-            FROM sleep_logs 
-            WHERE user_id = ? 
-              AND log_date > CURRENT_DATE - CAST(? || ' days' AS INTERVAL);
+                -- 4. Frequencies and range (unchanged)
+                COUNT(*) FILTER (WHERE mood = 'GOOD') AS count_good,
+                COUNT(*) FILTER (WHERE mood = 'OK')   AS count_ok,
+                COUNT(*) FILTER (WHERE mood = 'BAD')  AS count_bad,
+                MIN(log_date) AS range_start,
+                MAX(log_date) AS range_end
+            
+            FROM sleep_logs
+            WHERE user_id = ?
+              AND log_date > CURRENT_DATE - (? * INTERVAL '1 day');
         """
 
         return jdbcTemplate.queryForObject(sql, statsRowMapper,userId, days)!!
