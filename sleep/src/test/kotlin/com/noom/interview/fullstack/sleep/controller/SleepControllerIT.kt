@@ -79,6 +79,63 @@ class SleepControllerIT(@Autowired val mockMvc: MockMvc, @Autowired val objectMa
     }
 
     @Test
+    fun `test averages for non circular wake times `() {
+        val userId = UUID.randomUUID()
+        val today = LocalDate.now(ZoneOffset.UTC)
+
+        // Log 1: Wake at 11:00
+        val log1 = mapOf(
+            "logDate" to today.minusDays(1).toString(),
+            "bedTime" to today.minusDays(1).atTime(3, 0).atOffset(ZoneOffset.UTC).toString(),
+            "wakeTime" to today.minusDays(1).atTime(11, 0).atOffset(ZoneOffset.UTC).toString(),
+            "mood" to "GOOD"
+        )
+
+        // Log 2: Wake at 13:00
+        val log2 = mapOf(
+            "logDate" to today.toString(),
+            "bedTime" to today.atTime(5, 0).atOffset(ZoneOffset.UTC).toString(),
+            "wakeTime" to today.atTime(13, 0).atOffset(ZoneOffset.UTC).toString(),
+            "mood" to "OK"
+        )
+
+        // POST both logs
+        listOf(log1, log2).forEach { body ->
+            mockMvc.post("/api/v1/sleep") {
+                header("X-User-Id", userId)
+                contentType = MediaType.APPLICATION_JSON
+                content = objectMapper.writeValueAsString(body)
+            }.andExpect { status { isCreated() } }
+        }
+
+        // GET and Assert Stats
+        mockMvc.get("/api/v1/sleep/stats") {
+            header("X-User-Id", userId)
+        }.andExpect {
+            status { isOk() }
+            content {
+                // Avg duration: both are 8h → 28800
+                jsonPath("$.avgTotalTimeSeconds") { value(28800) }
+
+                // Expected midpoint between 11:00 and 13:00 → 12:00Z
+                jsonPath("$.avgWakeTime") { value("12:00Z") }
+
+                // Bed times: 03:00 and 05:00 → avg = 04:00Z
+                jsonPath("$.avgBedTime") { value("04:00Z") }
+
+                // Mood counts
+                jsonPath("$.moodFrequencies.GOOD") { value(1) }
+                jsonPath("$.moodFrequencies.OK") { value(1) }
+                jsonPath("$.moodFrequencies.BAD") { value(0) }
+
+                // Date range
+                jsonPath("$.startDate") { value(today.minusDays(1).toString()) }
+                jsonPath("$.endDate") { value(today.toString()) }
+            }
+        }
+    }
+
+    @Test
     fun `test aggregated stats handles UTC and circular averages correctly`() {
         val userId = UUID.randomUUID()
         val today = LocalDate.now(ZoneOffset.UTC)
@@ -136,7 +193,32 @@ class SleepControllerIT(@Autowired val mockMvc: MockMvc, @Autowired val objectMa
     }
 
     @Test
-    fun `get stats should only aggregate logs from the last 30 days`() {
+    fun `test cross-midnight duration is calculated correctly`() {
+        val userId = UUID.randomUUID()
+
+        mockMvc.post("/api/v1/sleep") {
+            header("X-User-Id", userId)
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(
+                mapOf(
+                    "logDate"  to "2024-01-15",
+                    "bedTime"  to "2024-01-14T21:45:00Z",
+                    "wakeTime" to "2024-01-15T06:15:00Z",
+                    "mood"     to "OK"
+                )
+            )
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.get("/api/v1/sleep/latest") {
+            header("X-User-Id", userId)
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.totalDurationSeconds") { value(30600) }
+        }
+    }
+
+    @Test
+    fun `test stats should only aggregate logs from the last 30 days`() {
         val userId = UUID.randomUUID()
         val now = OffsetDateTime.now(ZoneOffset.UTC)
         val today = now.toLocalDate()
@@ -190,54 +272,73 @@ class SleepControllerIT(@Autowired val mockMvc: MockMvc, @Autowired val objectMa
     }
 
     @Test
-    fun `get stats circular average handles bed times straddling midnight`() {
+    fun `stats - log exactly 30 days ago is included`() {
         val userId = UUID.randomUUID()
         val today = LocalDate.now(ZoneOffset.UTC)
 
-        // Log 1: bed at 23:30, wake at 07:00
-        val log1 = mapOf(
-            "logDate" to today.minusDays(1).toString(),
-            "bedTime" to today.minusDays(1).atTime(23, 30).atOffset(ZoneOffset.UTC).toString(),
-            "wakeTime" to today.atTime(7, 0).atOffset(ZoneOffset.UTC).toString(),
-            "mood" to "GOOD"
-        )
-
-        // Log 2: bed at 00:30, wake at 07:00
-        // Naive arithmetic mean of 23:30 and 00:30 = 12:00 (wrong)
-        // Circular mean = 00:00 (correct)
-        val log2 = mapOf(
-            "logDate" to today.toString(),
-            "bedTime" to today.atTime(0, 30).atOffset(ZoneOffset.UTC).toString(),
-            "wakeTime" to today.atTime(7, 0).atOffset(ZoneOffset.UTC).toString(),
-            "mood" to "OK"
-        )
-
-        listOf(log1, log2).forEach { body ->
-            mockMvc.post("/api/v1/sleep") {
-                header("X-User-Id", userId)
-                contentType = MediaType.APPLICATION_JSON
-                content = objectMapper.writeValueAsString(body)
-            }.andExpect { status { isCreated() } }
-        }
+        mockMvc.post("/api/v1/sleep") {
+            header("X-User-Id", userId)
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(
+                mapOf(
+                    "logDate"  to today.minusDays(30).toString(),
+                    "bedTime"  to today.minusDays(30).atTime(22, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "wakeTime" to today.minusDays(29).atTime(6, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "mood"     to "GOOD"
+                )
+            )
+        }.andExpect { status { isCreated() } }
 
         mockMvc.get("/api/v1/sleep/stats") {
             header("X-User-Id", userId)
         }.andExpect {
             status { isOk() }
-            content {
-                // Circular mean of 23:30 and 00:30 = 00:00, not 12:00
-                jsonPath("$.avgBedTime") { value(org.hamcrest.Matchers.containsString("00:00")) }
+            jsonPath("$.avgTotalTimeSeconds") { value(28800) }
+        }
+    }
 
-                // Both wake times identical — should be exact
-                jsonPath("$.avgWakeTime") { value(org.hamcrest.Matchers.containsString("07:00")) }
+    @Test
+    fun `stats - log 31 days ago is excluded`() {
+        val userId = UUID.randomUUID()
+        val today = LocalDate.now(ZoneOffset.UTC)
 
-                // Average of 7.5h (27000s) and 6.5h (23400s) = 7h (25200s)
-                jsonPath("$.avgTotalTimeSeconds") { value(25200) }
+        // Old log: 4h sleep with BAD mood — if included it would skew averages
+        mockMvc.post("/api/v1/sleep") {
+            header("X-User-Id", userId)
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(
+                mapOf(
+                    "logDate"  to today.minusDays(31).toString(),
+                    "bedTime"  to today.minusDays(31).atTime(0, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "wakeTime" to today.minusDays(31).atTime(4, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "mood"     to "BAD"
+                )
+            )
+        }.andExpect { status { isCreated() } }
 
-                jsonPath("$.moodFrequencies.GOOD") { value(1) }
-                jsonPath("$.moodFrequencies.OK") { value(1) }
-                jsonPath("$.moodFrequencies.BAD") { value(0) }
-            }
+        // Recent log: 8h sleep with GOOD mood
+        mockMvc.post("/api/v1/sleep") {
+            header("X-User-Id", userId)
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(
+                mapOf(
+                    "logDate"  to today.toString(),
+                    "bedTime"  to today.atTime(22, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "wakeTime" to today.plusDays(1).atTime(6, 0).atOffset(ZoneOffset.UTC).toString(),
+                    "mood"     to "GOOD"
+                )
+            )
+        }.andExpect { status { isCreated() } }
+
+        mockMvc.get("/api/v1/sleep/stats") {
+            header("X-User-Id", userId)
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.avgTotalTimeSeconds") { value(28800) }
+            jsonPath("$.moodFrequencies.GOOD") { value(1) }
+            jsonPath("$.moodFrequencies.BAD") { value(0) }
+            jsonPath("$.startDate") { value(today.toString()) }
+            jsonPath("$.endDate") { value(today.toString()) }
         }
     }
 }
